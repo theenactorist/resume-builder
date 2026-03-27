@@ -36,14 +36,27 @@ const Icons = {
 };
 
 // ─── Copy Button Component ──────────────────────────────────────────
-function CopyButton({ text, label = 'Copy' }) {
+function CopyButton({ text, contentId, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(text);
+    try {
+      const el = contentId ? document.getElementById(contentId) : null;
+      if (el) {
+        const htmlBlob = new Blob([el.innerHTML], { type: 'text/html' });
+        const textBlob = new Blob([text], { type: 'text/plain' });
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+        ]);
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch {
+      await navigator.clipboard.writeText(text);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [text]);
+  }, [text, contentId]);
 
   return (
     <button
@@ -339,6 +352,7 @@ export default function Home() {
                   <>
                     <CopyButton
                       text={activeTab === 'resume' ? result.resume : result.cover_letter}
+                      contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
                       label="Copy"
                     />
                     <ExportButton
@@ -351,21 +365,28 @@ export default function Home() {
             </div>
 
             {/* Tab Content */}
-            <div className="rounded-xl border border-[#1A1A1D] bg-[#0F0F10] min-h-[400px]">
-              {/* Resume Tab */}
-              {activeTab === 'resume' && (
-                <div className="p-6 md:p-8 markdown-content">
+
+            {/* Resume Tab - A4 Paper */}
+            {activeTab === 'resume' && (
+              <div className="py-6 flex justify-center">
+                <div className="resume-paper" id="resume-content">
                   <ReactMarkdown>{result.resume}</ReactMarkdown>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Cover Letter Tab */}
-              {activeTab === 'cover_letter' && (
-                <div className="p-6 md:p-8 markdown-content">
+            {/* Cover Letter Tab - A4 Paper */}
+            {activeTab === 'cover_letter' && (
+              <div className="py-6 flex justify-center">
+                <div className="resume-paper" id="cover-letter-content">
                   <ReactMarkdown>{result.cover_letter}</ReactMarkdown>
                 </div>
-              )}
+              </div>
+            )}
 
+            {/* ATS & Before/After - Dark Panel */}
+            {(activeTab === 'ats' || activeTab === 'before_after') && (
+            <div className="rounded-xl border border-[#1A1A1D] bg-[#0F0F10] min-h-[400px]">
               {/* ATS Score Tab */}
               {activeTab === 'ats' && result.ats_score && (
                 <div className="p-6 md:p-8">
@@ -425,6 +446,7 @@ export default function Home() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Analysis Summary */}
             {result.analysis && (

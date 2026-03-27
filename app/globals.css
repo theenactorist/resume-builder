@@ -31,6 +31,101 @@ body {
 .markdown-content strong { color: #F5F0EB; font-weight: 600; }
 .markdown-content hr { border-color: #2C2C30; margin: 1.5rem 0; }
 
+/* Resume Paper - A4 WYSIWYG */
+.resume-paper {
+  background: #ffffff;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 18mm 22mm;
+  margin: 0 auto;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+  color: #222;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.5;
+}
+
+@media (max-width: 850px) {
+  .resume-paper {
+    width: 100%;
+    min-height: auto;
+    padding: 24px;
+    box-shadow: none;
+    border-radius: 8px;
+  }
+}
+
+.resume-paper h1 {
+  font-size: 30pt;
+  font-weight: 700;
+  color: #4657f1;
+  margin: 0 0 4px 0;
+  line-height: 1.15;
+}
+
+.resume-paper h2 {
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: #4657f1;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1.5px solid #4657f1;
+  padding-bottom: 3px;
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+.resume-paper h3 {
+  font-size: 10.5pt;
+  font-weight: 600;
+  color: #222;
+  margin-top: 14px;
+  margin-bottom: 4px;
+}
+
+.resume-paper p {
+  color: #333;
+  margin-bottom: 4px;
+  font-size: 10pt;
+  line-height: 1.55;
+}
+
+.resume-paper ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin-bottom: 6px;
+  margin-top: 4px;
+}
+
+.resume-paper li {
+  color: #333;
+  margin-bottom: 5px;
+  font-size: 10pt;
+  line-height: 1.5;
+}
+
+.resume-paper strong {
+  color: #111;
+  font-weight: 600;
+}
+
+.resume-paper a {
+  color: #4657f1;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.resume-paper a:hover {
+  opacity: 0.8;
+}
+
+.resume-paper hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 14px 0;
+}
+
 /* Pulse animation */
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.15); }

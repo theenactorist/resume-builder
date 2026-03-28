@@ -1,4 +1,5 @@
 import { SYSTEM_PROMPT } from '@/lib/system-prompt';
+import { query } from '@/lib/db';
 
 export const maxDuration = 60;
 
@@ -56,6 +57,18 @@ export async function POST(request) {
     // Parse the JSON response from Claude
     const cleaned = rawText.replace(/```json\s*|```\s*/g, '').trim();
     const result = JSON.parse(cleaned);
+
+    // Auto-save to database (non-blocking)
+    query(
+      `INSERT INTO generations (company_name, job_title, job_description, result)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        result.company_name || 'Unknown Company',
+        result.job_title || null,
+        jobDescription,
+        JSON.stringify(result),
+      ]
+    ).catch((err) => console.error('DB save error:', err.message));
 
     return Response.json(result);
   } catch (error) {

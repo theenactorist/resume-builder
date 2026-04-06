@@ -84,28 +84,40 @@ body {
   margin-bottom: 4px;
 }
 
-.resume-paper h2 + h3 {
+.resume-paper h2 + h3,
+.resume-paper h2 + table.exp-table {
   margin-top: 10px;
 }
 
-.resume-paper h3.exp-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
+.resume-paper table.exp-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: none;
+  margin-top: 28px;
+  margin-bottom: 4px;
 }
 
-.resume-paper .exp-left {
-  flex: 1;
+.resume-paper table.exp-table td {
+  padding: 0;
+  vertical-align: bottom;
 }
 
-.resume-paper .exp-date {
-  white-space: nowrap;
+.resume-paper table.exp-table td.exp-left {
+  text-align: left;
+}
+
+.resume-paper table.exp-table td.exp-right {
   text-align: right;
-  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.resume-paper h3.exp-header em {
+.resume-paper table.exp-table h3 {
+  margin: 0;
+  padding: 0;
+  display: inline;
+}
+
+.resume-paper table.exp-table em {
   font-weight: 400;
 }
 .resume-paper p {

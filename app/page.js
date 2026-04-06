@@ -661,10 +661,18 @@ export default function Home() {
                               });
                               
                               return (
-                                <h3 className="exp-header">
-                                  <span className="exp-left">{leftParts}</span>
-                                  <span className="exp-date">{rightParts}</span>
-                                </h3>
+                                <table className="exp-table">
+                                  <tbody>
+                                    <tr>
+                                      <td className="exp-left">
+                                        <h3>{leftParts}</h3>
+                                      </td>
+                                      <td className="exp-right">
+                                        <h3>{rightParts}</h3>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               );
                             }
                             return <h3>{children}</h3>;

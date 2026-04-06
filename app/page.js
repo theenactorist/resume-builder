@@ -155,7 +155,7 @@ function ExportDocxButton({ contentId, filename }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = filename.replace('.docx', '.doc');
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -166,7 +166,7 @@ function ExportDocxButton({ contentId, filename }) {
       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
     >
       <Icons.Download />
-      Export .doc
+      Export .docx
     </button>
   );
 }

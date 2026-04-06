@@ -218,3 +218,8 @@ textarea:focus {
     width: 210mm;
   }
 }
+
+.resume-paper[contenteditable="true"] {
+  outline: 2px dashed rgba(52, 211, 153, 0.5);
+  outline-offset: 4px;
+}

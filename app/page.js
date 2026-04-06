@@ -700,8 +700,65 @@ export default function Home() {
                     >
                       <ReactMarkdown
                         components={{
+                          h1: ({ children }) => {
+                            const childArray = Array.isArray(children) ? children : [children];
+                            const fullText = childArray.map(c => (typeof c === 'string' ? c : '')).join('');
+
+                            if (!fullText.includes('|||')) {
+                              return <h1>{children}</h1>;
+                            }
+
+                            // Split into name (left) and contact items (right) at |||
+                            const leftParts = [];
+                            const rightRaw = [];
+                            let foundDelimiter = false;
+
+                            childArray.forEach((child) => {
+                              if (typeof child === 'string' && child.includes('|||')) {
+                                const [left, right] = child.split('|||');
+                                if (left.trim()) leftParts.push(left.trim());
+                                foundDelimiter = true;
+                                if (right?.trim()) rightRaw.push(right.trim());
+                              } else if (!foundDelimiter) {
+                                leftParts.push(child);
+                              } else {
+                                rightRaw.push(child);
+                              }
+                            });
+
+                            // Split right side into individual contact lines at ' | '
+                            const contactLines = [];
+                            let currentLine = [];
+                            rightRaw.forEach((part) => {
+                              if (typeof part === 'string') {
+                                const segments = part.split(' | ');
+                                segments.forEach((seg, i) => {
+                                  if (i > 0) {
+                                    if (currentLine.length) contactLines.push(currentLine);
+                                    currentLine = [];
+                                  }
+                                  if (seg.trim()) currentLine.push(seg.trim());
+                                });
+                              } else {
+                                currentLine.push(part);
+                              }
+                            });
+                            if (currentLine.length) contactLines.push(currentLine);
+
+                            return (
+                              <div className="resume-header">
+                                <div className="resume-header-left">
+                                  <h1>{leftParts}</h1>
+                                </div>
+                                <div className="resume-header-right">
+                                  {contactLines.map((line, i) => (
+                                    <div key={i}>{line}</div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          },
                           h3: ({ children }) => {
-                            const text = typeof children === 'string' ? children : '';
                             const childArray = Array.isArray(children) ? children : [children];
                             
                             // Check if any child contains the ||| delimiter

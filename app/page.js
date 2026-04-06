@@ -615,7 +615,44 @@ export default function Home() {
                 {activeTab === 'resume' && (
                   <div className="py-6 flex justify-center">
                     <div className="resume-paper" id="resume-content">
-                      <ReactMarkdown>{result.resume}</ReactMarkdown>
+                      <ReactMarkdown
+                        components={{
+                          h3: ({ children }) => {
+                            const text = typeof children === 'string' ? children : '';
+                            const childArray = Array.isArray(children) ? children : [children];
+                            
+                            // Check if any child contains the ||| delimiter
+                            const fullText = childArray.map(c => (typeof c === 'string' ? c : '')).join('');
+                            if (fullText.includes('|||')) {
+                              // Split children into left and right parts at the ||| delimiter
+                              const leftParts = [];
+                              const rightParts = [];
+                              let foundDelimiter = false;
+                              
+                              childArray.forEach((child) => {
+                                if (typeof child === 'string' && child.includes('|||')) {
+                                  const [left, right] = child.split('|||');
+                                  if (left.trim()) leftParts.push(left.trim());
+                                  foundDelimiter = true;
+                                  if (right?.trim()) rightParts.push(right.trim());
+                                } else if (!foundDelimiter) {
+                                  leftParts.push(child);
+                                } else {
+                                  rightParts.push(child);
+                                }
+                              });
+                              
+                              return (
+                                <h3 className="exp-header">
+                                  <span className="exp-left">{leftParts}</span>
+                                  <span className="exp-date">{rightParts}</span>
+                                </h3>
+                              );
+                            }
+                            return <h3>{children}</h3>;
+                          }
+                        }}
+                      >{result.resume}</ReactMarkdown>
                     </div>
                   </div>
                 )}

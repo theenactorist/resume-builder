@@ -84,6 +84,22 @@ body {
   margin-bottom: 4px;
 }
 
+.resume-paper h3.exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+}
+
+.resume-paper .exp-left {
+  flex: 1;
+}
+
+.resume-paper .exp-date {
+  white-space: nowrap;
+  text-align: right;
+  flex-shrink: 0;
+}
 .resume-paper p {
   color: #333;
   margin-bottom: 4px;

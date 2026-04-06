@@ -84,6 +84,10 @@ body {
   margin-bottom: 4px;
 }
 
+.resume-paper h2 + h3 {
+  margin-top: 10px;
+}
+
 .resume-paper h3.exp-header {
   display: flex;
   justify-content: space-between;

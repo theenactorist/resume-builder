@@ -80,7 +80,7 @@ body {
   font-size: 10.5pt;
   font-weight: 600;
   color: #222;
-  margin-top: 14px;
+  margin-top: 22px;
   margin-bottom: 4px;
 }
 
@@ -111,13 +111,14 @@ body {
 }
 
 .resume-paper a {
-  color: #4657f1;
+  color: inherit;
   text-decoration: underline;
+  text-decoration-style: dotted;
   text-underline-offset: 2px;
 }
 
 .resume-paper a:hover {
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
 .resume-paper hr {

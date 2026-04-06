@@ -121,6 +121,63 @@ function ExportButton({ content, filename }) {
   );
 }
 
+// ─── Export as DOCX ─────────────────────────────────────────────────
+function ExportDocxButton({ contentId, filename }) {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { asBlob } = await import('html-docx-js-typescript');
+      const el = document.getElementById(contentId);
+      if (!el) return;
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: 'Calibri', sans-serif; font-size: 11pt; line-height: 1.5; color: #222; }
+            h1 { font-size: 22pt; font-weight: 700; color: #222; margin: 0 0 4px 0; }
+            h2 { font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1.5px solid #4657f1; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; color: #4657f1; }
+            h3 { font-size: 11pt; font-weight: 600; margin-top: 14px; margin-bottom: 4px; }
+            p { margin-bottom: 4px; font-size: 10.5pt; }
+            ul { padding-left: 20px; margin-bottom: 6px; }
+            li { margin-bottom: 4px; font-size: 10.5pt; }
+            a { color: #222; text-decoration: underline; }
+          </style>
+        </head>
+        <body>${el.innerHTML}</body>
+        </html>
+      `;
+
+      const blob = await asBlob(htmlContent, { orientation: 'portrait' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('DOCX export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={exporting}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
+    >
+      <Icons.Download />
+      {exporting ? 'Exporting...' : 'Export .docx'}
+    </button>
+  );
+}
+
 // ─── Tab Component ──────────────────────────────────────────────────
 function Tabs({ tabs, activeTab, onTabChange }) {
   return (
@@ -549,6 +606,10 @@ export default function Home() {
                         <ExportButton
                           content={activeTab === 'resume' ? result.resume : result.cover_letter}
                           filename={activeTab === 'resume' ? 'Resume_Olumide_Olusesi.md' : 'Cover_Letter_Olumide_Olusesi.md'}
+                        />
+                        <ExportDocxButton
+                          contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
+                          filename={activeTab === 'resume' ? 'Resume_Olumide_Olusesi.docx' : 'Cover_Letter_Olumide_Olusesi.docx'}
                         />
                       </>
                     )}

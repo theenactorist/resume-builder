@@ -13,6 +13,7 @@ async function extractKeywords(jobDescription, apiKey) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
+      temperature: 0,
       system: EXTRACTION_SYSTEM_PROMPT,
       messages: [
         {
@@ -36,7 +37,11 @@ async function extractKeywords(jobDescription, apiKey) {
 
   try {
     const cleaned = rawText.replace(/```json\s*|```\s*/g, '').trim();
-    return JSON.parse(cleaned);
+    const extracted = JSON.parse(cleaned);
+    if (!extracted || (!Array.isArray(extracted.hard_skills) && !Array.isArray(extracted.tools))) {
+      console.warn('Pass 1 returned unexpected shape:', Object.keys(extracted || {}));
+    }
+    return extracted;
   } catch {
     console.error('Pass 1 JSON parse failed, continuing without keyword injection');
     return { hard_skills: [], soft_skills: [], tools: [], phrases: [], variants: [] };

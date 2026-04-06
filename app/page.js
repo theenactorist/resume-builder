@@ -123,57 +123,50 @@ function ExportButton({ content, filename }) {
 
 // ─── Export as DOCX ─────────────────────────────────────────────────
 function ExportDocxButton({ contentId, filename }) {
-  const [exporting, setExporting] = useState(false);
+  const handleExport = () => {
+    const el = document.getElementById(contentId);
+    if (!el) return;
 
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      const { asBlob } = await import('html-docx-js-typescript');
-      const el = document.getElementById(contentId);
-      if (!el) return;
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w="urn:schemas-microsoft-com:office:word"
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          @page { size: A4; margin: 2.5cm; }
+          body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.5; color: #222; }
+          h1 { font-size: 22pt; font-weight: 700; color: #222; margin: 0 0 4px 0; }
+          h2 { font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1.5px solid #4657f1; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; color: #4657f1; }
+          h3 { font-size: 11pt; font-weight: 600; margin-top: 18px; margin-bottom: 4px; }
+          p { margin-bottom: 4px; font-size: 10.5pt; }
+          ul { padding-left: 20px; margin-bottom: 6px; }
+          li { margin-bottom: 4px; font-size: 10.5pt; }
+          a { color: #222; text-decoration: underline; }
+        </style>
+      </head>
+      <body>${el.innerHTML}</body>
+      </html>
+    `;
 
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: 'Calibri', sans-serif; font-size: 11pt; line-height: 1.5; color: #222; }
-            h1 { font-size: 22pt; font-weight: 700; color: #222; margin: 0 0 4px 0; }
-            h2 { font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1.5px solid #4657f1; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; color: #4657f1; }
-            h3 { font-size: 11pt; font-weight: 600; margin-top: 14px; margin-bottom: 4px; }
-            p { margin-bottom: 4px; font-size: 10.5pt; }
-            ul { padding-left: 20px; margin-bottom: 6px; }
-            li { margin-bottom: 4px; font-size: 10.5pt; }
-            a { color: #222; text-decoration: underline; }
-          </style>
-        </head>
-        <body>${el.innerHTML}</body>
-        </html>
-      `;
-
-      const blob = await asBlob(htmlContent, { orientation: 'portrait' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('DOCX export failed:', err);
-    } finally {
-      setExporting(false);
-    }
+    const blob = new Blob(['\ufeff', htmlContent], {
+      type: 'application/msword'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.replace('.docx', '.doc');
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <button
       onClick={handleExport}
-      disabled={exporting}
       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
     >
       <Icons.Download />
-      {exporting ? 'Exporting...' : 'Export .docx'}
+      Export .doc
     </button>
   );
 }

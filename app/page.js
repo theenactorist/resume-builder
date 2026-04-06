@@ -171,6 +171,23 @@ function ExportDocxButton({ contentId, filename }) {
   );
 }
 
+// ─── Export as PDF ──────────────────────────────────────────────────
+function ExportPdfButton() {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <button
+      onClick={handlePrint}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
+    >
+      <Icons.Download />
+      Export .pdf
+    </button>
+  );
+}
+
 // ─── Tab Component ──────────────────────────────────────────────────
 function Tabs({ tabs, activeTab, onTabChange }) {
   return (
@@ -604,6 +621,7 @@ export default function Home() {
                           contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
                           filename={activeTab === 'resume' ? 'Resume_Olumide_Olusesi.docx' : 'Cover_Letter_Olumide_Olusesi.docx'}
                         />
+                        <ExportPdfButton />
                       </>
                     )}
                   </div>

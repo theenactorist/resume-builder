@@ -181,3 +181,28 @@ textarea:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.3);
 }
+
+/* Print Styles */
+@media print {
+  body {
+    background: transparent;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  #resume-content, #resume-content *, #cover-letter-content, #cover-letter-content * {
+    visibility: visible;
+  }
+  
+  #resume-content, #cover-letter-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    width: 210mm;
+  }
+}

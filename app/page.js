@@ -98,6 +98,51 @@ function CopyButton({ text, contentId, label = 'Copy' }) {
   );
 }
 
+// ─── Gaps Panel ─────────────────────────────────────────────────────
+function GapsPanel({ gaps }) {
+  const sections = [
+    { label: 'Tools', items: gaps?.tools || [] },
+    { label: 'Skills', items: gaps?.skills || [] },
+    { label: 'Soft skills', items: gaps?.soft_skills || [] },
+  ].filter((s) => s.items.length > 0);
+
+  if (sections.length === 0) return null;
+
+  return (
+    <div
+      className="mb-6 rounded-lg border px-4 py-3"
+      style={{ borderColor: '#7C5A2E', background: 'rgba(124,90,46,0.08)' }}
+    >
+      <p className="text-xs font-semibold mb-2" style={{ color: '#E8A54B' }}>
+        Skills gap detected
+      </p>
+      <p className="text-xs mb-3" style={{ color: '#9E9088' }}>
+        These items appear in the job description but are not in your base resume. Consider adding them if you have relevant experience.
+      </p>
+      <div className="flex flex-col gap-2">
+        {sections.map(({ label, items }) => (
+          <div key={label} className="flex gap-2 flex-wrap items-start">
+            <span className="text-xs font-medium shrink-0" style={{ color: '#9E9088', minWidth: '64px' }}>
+              {label}:
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {items.map((item) => (
+                <span
+                  key={item}
+                  className="text-xs px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(124,90,46,0.2)', color: '#E8A54B', border: '1px solid rgba(124,90,46,0.4)' }}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Export as text file ────────────────────────────────────────────
 function ExportButton({ content, filename }) {
   const handleExport = () => {
@@ -638,6 +683,9 @@ export default function Home() {
                     )}
                   </div>
                 </div>
+
+                {/* Gaps Panel */}
+                <GapsPanel gaps={result.gaps} />
 
                 {/* Tab Content */}
 

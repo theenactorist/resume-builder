@@ -56,51 +56,36 @@ body {
   }
 }
 
-/* Resume header — two-column layout */
-.resume-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2px;
-}
-
-.resume-header-left h1 {
-  font-size: 20pt;
-  font-weight: 700;
-  color: #4657f1;
-  margin: 0;
-  line-height: 1.15;
-}
-
-.resume-header-right {
+/* Contact block — floats right beside the name */
+.resume-contact {
+  float: right;
   text-align: right;
   font-size: 9pt;
   color: #444;
   line-height: 1.75;
-  padding-top: 4px;
+  margin: 0 0 4px 0;
 }
 
-.resume-header-right a {
+.resume-contact a {
   color: #444 !important;
   text-decoration: none !important;
 }
 
-/* Job title subtitle — paragraph immediately after the header */
-.resume-header + p {
+.resume-paper h1 {
+  font-size: 20pt;
+  font-weight: 700;
+  color: #4657f1;
+  margin: 0 0 2px 0;
+  line-height: 1.15;
+}
+
+/* Job title — paragraph immediately after h1 */
+.resume-paper h1 + p {
   font-size: 10.5pt;
   font-weight: 500;
   color: #4657f1;
   margin: 0 0 14px 0;
   line-height: 1.2;
-}
-
-/* Fallback for h1 when no ||| (e.g. cover letter) */
-.resume-paper h1 {
-  font-size: 20pt;
-  font-weight: 700;
-  color: #4657f1;
-  margin: 0 0 4px 0;
-  line-height: 1.15;
 }
 
 .resume-paper h2 {

@@ -74,7 +74,7 @@ body {
 .resume-paper h1 {
   font-size: 20pt;
   font-weight: 700;
-  color: #4657f1;
+  color: #111;
   margin: 0 0 2px 0;
   line-height: 1.15;
 }
@@ -83,7 +83,7 @@ body {
 .resume-paper h1 + p {
   font-size: 10.5pt;
   font-weight: 500;
-  color: #4657f1;
+  color: #333;
   margin: 0 0 14px 0;
   line-height: 1.2;
 }
@@ -94,10 +94,11 @@ body {
   color: #4657f1;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  border-bottom: 1.5px solid #4657f1;
+  border-bottom: 0.75px solid #4657f1;
   padding-bottom: 3px;
   margin-top: 18px;
   margin-bottom: 10px;
+  clear: both;
 }
 
 .resume-paper h3 {
@@ -110,6 +111,11 @@ body {
 
 .resume-paper h2 + h3,
 .resume-paper h2 + table.exp-table {
+  margin-top: 10px;
+}
+
+/* Tighten spacing between consecutive cert/mentorship entries */
+.resume-paper p + table.exp-table {
   margin-top: 10px;
 }
 

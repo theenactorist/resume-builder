@@ -98,6 +98,29 @@ function CopyButton({ text, contentId, label = 'Copy' }) {
   );
 }
 
+// ─── Cold Messages Tab ───────────────────────────────────────────────────
+function ColdMessageCard({ label, message }) {
+  const wordCount = message ? message.trim().split(/\s+/).length : 0;
+
+  return (
+    <div
+      className="rounded-lg border p-5 flex flex-col gap-3"
+      style={{ borderColor: '#2C2C30', background: '#111113' }}
+    >
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold" style={{ color: '#F5F0EB' }}>{label}</p>
+        <div className="flex items-center gap-2">
+          <span className="text-xs" style={{ color: '#555' }}>{wordCount} words</span>
+          <CopyButton text={message || ''} label="Copy" />
+        </div>
+      </div>
+      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#C4B8AC' }}>
+        {message || 'Not generated.'}
+      </p>
+    </div>
+  );
+}
+
 // ─── Gaps Panel ─────────────────────────────────────────────────────
 function GapsPanel({ gaps }) {
   const sections = [
@@ -457,6 +480,7 @@ function HistorySidebar({ history, activeId, onSelect, onDelete, onNewGeneration
 // ─── Main Page ──────────────────────────────────────────────────────
 export default function Home() {
   const [jobDescription, setJobDescription] = useState('');
+  const [companyHook, setCompanyHook] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -471,6 +495,7 @@ export default function Home() {
     { id: 'cover_letter', label: 'Cover Letter' },
     { id: 'ats', label: 'ATS Score' },
     { id: 'before_after', label: 'Before / After' },
+    { id: 'cold_messages', label: 'Cold Messages' },
   ];
 
   // Load history on mount
@@ -525,6 +550,7 @@ export default function Home() {
     setResult(null);
     setActiveHistoryId(null);
     setJobDescription('');
+    setCompanyHook('');
     setError(null);
     setActiveTab('resume');
   };
@@ -542,7 +568,7 @@ export default function Home() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription }),
+        body: JSON.stringify({ jobDescription, companyHook }),
       });
 
       const data = await response.json();
@@ -632,6 +658,15 @@ export default function Home() {
                 placeholder="Paste the complete job description here..."
                 rows={8}
                 className="w-full bg-[#111113] border border-[#1A1A1D] rounded-lg px-4 py-3 text-sm text-[#C4B8AC] placeholder-[#3a3a3f] resize-y font-body leading-relaxed transition-all duration-200"
+              />
+
+              <textarea
+                value={companyHook}
+                onChange={(e) => setCompanyHook(e.target.value)}
+                placeholder="Optional: paste one thing you noticed about the company — a product, a value, recent news. Makes the hook specific."
+                rows={2}
+                className="w-full bg-transparent text-[#9E9088] placeholder-[#555] text-xs resize-none focus:outline-none"
+                style={{ borderTop: '1px solid #1A1A1D', paddingTop: '10px', marginTop: '10px' }}
               />
 
               <div className="flex items-center justify-between mt-4">
@@ -878,6 +913,22 @@ export default function Home() {
                     </div>
                   )}
                 </div>
+                )}
+
+                {activeTab === 'cold_messages' && (
+                  <div className="flex flex-col gap-4">
+                    <p className="text-xs" style={{ color: '#9E9088' }}>
+                      LinkedIn DMs tailored to this role and company. Replace [Name] with the recipient's name before sending.
+                    </p>
+                    <ColdMessageCard
+                      label="To a Recruiter"
+                      message={result.cold_messages?.recruiter}
+                    />
+                    <ColdMessageCard
+                      label="To a Product Designer"
+                      message={result.cold_messages?.designer}
+                    />
+                  </div>
                 )}
 
                 {/* Analysis Summary */}

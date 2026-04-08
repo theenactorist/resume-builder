@@ -58,7 +58,7 @@ export const maxDuration = 120;
 
 export async function POST(request) {
   try {
-    const { jobDescription } = await request.json();
+    const { jobDescription, companyHook } = await request.json();
 
     if (!jobDescription || jobDescription.trim().length < 50) {
       return Response.json(
@@ -97,7 +97,7 @@ export async function POST(request) {
         messages: [
           {
             role: 'user',
-            content: `Here is the Job Description I am applying to. Generate a targeted resume, cover letter, and ATS analysis. Return ONLY valid JSON as specified in your instructions.\n\n---\n\nJOB DESCRIPTION:\n\n${jobDescription}${keywordChecklist}`,
+            content: `Here is the Job Description I am applying to. Generate a targeted resume, cover letter, ATS analysis, and cold LinkedIn messages. Return ONLY valid JSON as specified in your instructions.\n\n---\n\nJOB DESCRIPTION:\n\n${jobDescription}${keywordChecklist}${companyHook ? `\n\nCOMPANY HOOK (use this in both cold messages):\n${companyHook}` : ''}`,
           },
         ],
       }),

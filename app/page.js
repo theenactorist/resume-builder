@@ -99,7 +99,7 @@ function CopyButton({ text, contentId, label = 'Copy' }) {
 }
 
 // ─── Cold Messages Tab ───────────────────────────────────────────────────
-function ColdMessageCard({ label, message }) {
+function ColdMessageCard({ label, message, subject }) {
   const wordCount = message ? message.trim().split(/\s+/).length : 0;
 
   return (
@@ -114,6 +114,18 @@ function ColdMessageCard({ label, message }) {
           <CopyButton text={message || ''} label="Copy" />
         </div>
       </div>
+      {subject && (
+        <div
+          className="flex items-center justify-between rounded px-3 py-2 gap-3"
+          style={{ background: '#0A0A0B', border: '1px solid #1A1A1D' }}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] uppercase tracking-widest mb-0.5" style={{ color: '#555' }}>Subject</p>
+            <p className="text-xs font-medium truncate" style={{ color: '#C4B8AC' }}>{subject}</p>
+          </div>
+          <CopyButton text={subject} label="Copy" />
+        </div>
+      )}
       <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#C4B8AC' }}>
         {message || 'Not generated.'}
       </p>
@@ -923,10 +935,12 @@ export default function Home() {
                     <ColdMessageCard
                       label="To a Recruiter"
                       message={result.cold_messages?.recruiter}
+                      subject={result.cold_messages?.subject_lines?.recruiter}
                     />
                     <ColdMessageCard
                       label="To a Product Designer"
                       message={result.cold_messages?.designer}
+                      subject={result.cold_messages?.subject_lines?.designer}
                     />
                   </div>
                 )}

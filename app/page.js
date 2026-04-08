@@ -143,6 +143,16 @@ function GapsPanel({ gaps }) {
   );
 }
 
+// ─── Dynamic filename builder ────────────────────────────────────────
+function buildFilename(result, type, ext) {
+  const sanitize = (s) => (s || '').replace(/[/\\:*?"<>|]/g, '').trim();
+  const name = 'Olumide Olusesi';
+  const role = sanitize(result?.job_title);
+  const company = sanitize(result?.company_name);
+  const segments = [name, role, company, type].filter(Boolean);
+  return `${segments.join('-')}.${ext}`;
+}
+
 // ─── Export as text file ────────────────────────────────────────────
 function ExportButton({ content, filename }) {
   const handleExport = () => {
@@ -217,19 +227,40 @@ function ExportDocxButton({ contentId, filename }) {
 }
 
 // ─── Export as PDF ──────────────────────────────────────────────────
-function ExportPdfButton() {
+function ExportPdfButton({ result }) {
+  const [toastVisible, setToastVisible] = useState(false);
+  const suggestedName = buildFilename(result, 'Resume', 'pdf');
+
   const handlePrint = () => {
+    setToastVisible(true);
     window.print();
   };
 
   return (
-    <button
-      onClick={handlePrint}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
-    >
-      <Icons.Download />
-      Export .pdf
-    </button>
+    <>
+      {toastVisible && (
+        <div
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-lg border text-xs shadow-lg"
+          style={{ borderColor: '#7C5A2E', background: '#1a1200', color: '#E8A54B', maxWidth: '520px' }}
+        >
+          <span>Save PDF as: <strong style={{ userSelect: 'all' }}>{suggestedName}</strong></span>
+          <button
+            onClick={() => setToastVisible(false)}
+            style={{ color: '#E8A54B', opacity: 0.7, lineHeight: 1 }}
+            className="ml-1 hover:opacity-100"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      <button
+        onClick={handlePrint}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
+      >
+        <Icons.Download />
+        Export .pdf
+      </button>
+    </>
   );
 }
 
@@ -661,13 +692,13 @@ export default function Home() {
                         />
                         <ExportButton
                           content={activeTab === 'resume' ? result.resume : result.cover_letter}
-                          filename={activeTab === 'resume' ? 'Resume_Olumide_Olusesi.md' : 'Cover_Letter_Olumide_Olusesi.md'}
+                          filename={activeTab === 'resume' ? buildFilename(result, 'Resume', 'md') : buildFilename(result, 'Cover Letter', 'md')}
                         />
                         <ExportDocxButton
                           contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
-                          filename={activeTab === 'resume' ? 'Resume_Olumide_Olusesi.docx' : 'Cover_Letter_Olumide_Olusesi.docx'}
+                          filename={activeTab === 'resume' ? buildFilename(result, 'Resume', 'docx') : buildFilename(result, 'Cover Letter', 'docx')}
                         />
-                        <ExportPdfButton />
+                        <ExportPdfButton result={result} />
                         <button
                           onClick={() => setIsEditing(!isEditing)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all duration-200 ${

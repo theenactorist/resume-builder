@@ -715,9 +715,9 @@ export default function Home() {
             {result && !loading && (
               <div>
                 {/* Tabs */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col gap-3 mb-6">
                   <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-                  <div className="flex gap-2">
+                  <div className="flex justify-end gap-2">
                     {(activeTab === 'resume' || activeTab === 'cover_letter') && (
                       <>
                         <CopyButton

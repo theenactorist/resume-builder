@@ -262,40 +262,15 @@ function ExportDocxButton({ contentId, filename }) {
 }
 
 // ─── Export as PDF ──────────────────────────────────────────────────
-function ExportPdfButton({ result }) {
-  const [toastVisible, setToastVisible] = useState(false);
-  const suggestedName = buildFilename(result, 'Resume', 'pdf');
-
-  const handlePrint = () => {
-    setToastVisible(true);
-    window.print();
-  };
-
+function ExportPdfButton() {
   return (
-    <>
-      {toastVisible && (
-        <div
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-lg border text-xs shadow-lg"
-          style={{ borderColor: '#7C5A2E', background: '#1a1200', color: '#E8A54B', maxWidth: '520px' }}
-        >
-          <span>Save PDF as: <strong style={{ userSelect: 'all' }}>{suggestedName}</strong></span>
-          <button
-            onClick={() => setToastVisible(false)}
-            style={{ color: '#E8A54B', opacity: 0.7, lineHeight: 1 }}
-            className="ml-1 hover:opacity-100"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      <button
-        onClick={handlePrint}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
-      >
-        <Icons.Download />
-        Export .pdf
-      </button>
-    </>
+    <button
+      onClick={() => window.print()}
+      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
+    >
+      <Icons.Download />
+      Export .pdf
+    </button>
   );
 }
 
@@ -745,7 +720,7 @@ export default function Home() {
                           contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
                           filename={activeTab === 'resume' ? buildFilename(result, 'Resume', 'docx') : buildFilename(result, 'Cover Letter', 'docx')}
                         />
-                        <ExportPdfButton result={result} />
+                        <ExportPdfButton />
                         <button
                           onClick={() => setIsEditing(!isEditing)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all duration-200 ${
@@ -769,6 +744,13 @@ export default function Home() {
 
                 {/* Resume Tab - A4 Paper */}
                 {activeTab === 'resume' && (
+                  <>
+                  <p style={{ textAlign: 'center', fontSize: '0.72rem', marginBottom: '0.35rem', color: '#555', userSelect: 'none' }}>
+                    PDF filename:{' '}
+                    <span style={{ color: '#E8A54B', userSelect: 'all', cursor: 'text' }}>
+                      {buildFilename(result, 'Resume', 'pdf')}
+                    </span>
+                  </p>
                   <div className="py-6 flex justify-center">
                     <div 
                       className="resume-paper" 
@@ -847,6 +829,7 @@ export default function Home() {
                       >{result.resume}</ReactMarkdown>
                     </div>
                   </div>
+                  </>
                 )}
 
                 {/* Cover Letter Tab - A4 Paper */}

@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Resume Engine — Olumide Olusesi',
-  description: 'AI-powered targeted resume and cover letter generator',
+  title: 'Resume Engine',
+  description: 'Tailor a resume and cover letter from your own experience and a job description.',
 };
 
 export default function RootLayout({ children }) {

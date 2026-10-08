@@ -1,471 +1,533 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { asBlob } from 'html-docx-js-typescript';
 
 // ─── Icons (inline SVG) ─────────────────────────────────────────────
 const Icons = {
   Copy: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
   ),
   Check: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
     </svg>
   ),
   Sparkle: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 3v18M5.5 7.5 12 3l6.5 4.5M5.5 16.5 12 21l6.5-4.5" />
     </svg>
   ),
   Download: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   ),
   Arrow: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   ),
-  Trash: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
-  ),
   Clock: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
   Plus: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   ),
   Sidebar: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <line x1="9" y1="3" x2="9" y2="21" />
     </svg>
   ),
 };
 
-// ─── Copy Button Component ──────────────────────────────────────────
+// Copy and export tools stay beside the application draft.
 function CopyButton({ text, contentId, label = 'Copy' }) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(null);
 
   const handleCopy = useCallback(async () => {
+    setCopyError(null);
+    let plainText = text;
     try {
       const el = contentId ? document.getElementById(contentId) : null;
       if (el) {
-        const htmlBlob = new Blob([el.innerHTML], { type: 'text/html' });
-        const textBlob = new Blob([text], { type: 'text/plain' });
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
-        ]);
+        const html = el.innerHTML;
+        plainText = el.innerText;
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([plainText], { type: 'text/plain' }),
+        })]);
       } else {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(plainText);
       }
     } catch {
-      await navigator.clipboard.writeText(text);
+      try {
+        await navigator.clipboard.writeText(plainText);
+      } catch {
+        setCopyError('Copy is unavailable. Try exporting the document instead.');
+        return;
+      }
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [text, contentId]);
 
   return (
-    <button
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all duration-200"
-      style={{
-        borderColor: copied ? '#34D399' : '#2C2C30',
-        color: copied ? '#34D399' : '#9E9088',
-        background: copied ? 'rgba(52,211,153,0.08)' : 'transparent',
-      }}
-    >
-      {copied ? <Icons.Check /> : <Icons.Copy />}
-      {copied ? 'Copied' : label}
-    </button>
-  );
-}
-
-// ─── Cold Messages Tab ───────────────────────────────────────────────────
-function ColdMessageCard({ label, message, subject }) {
-  const wordCount = message ? message.trim().split(/\s+/).length : 0;
-
-  return (
-    <div
-      className="rounded-lg border p-5 flex flex-col gap-3"
-      style={{ borderColor: '#2C2C30', background: '#111113' }}
-    >
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold" style={{ color: '#F5F0EB' }}>{label}</p>
-        <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: '#555' }}>{wordCount} words</span>
-          <CopyButton text={message || ''} label="Copy" />
-        </div>
-      </div>
-      {subject && (
-        <div
-          className="flex items-center justify-between rounded px-3 py-2 gap-3"
-          style={{ background: '#0A0A0B', border: '1px solid #1A1A1D' }}
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-widest mb-0.5" style={{ color: '#555' }}>Subject</p>
-            <p className="text-xs font-medium truncate" style={{ color: '#C4B8AC' }}>{subject}</p>
-          </div>
-          <CopyButton text={subject} label="Copy" />
-        </div>
-      )}
-      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: '#C4B8AC' }}>
-        {message || 'Not generated.'}
-      </p>
+    <div className="export-control">
+      <button type="button" onClick={handleCopy} className="button button-secondary button-small" data-copied={copied}>
+        {copied ? <Icons.Check /> : <Icons.Copy />}
+        {copied ? 'Copied' : label}
+      </button>
+      {copyError && <p role="alert" className="field-error export-error">{copyError}</p>}
     </div>
   );
 }
 
-// ─── Gaps Panel ─────────────────────────────────────────────────────
+function ColdMessageCard({ label, message, subject }) {
+  const wordCount = message ? message.trim().split(/\s+/).length : 0;
+  return (
+    <article className="message-card">
+      <div className="card-heading-row">
+        <h3>{label}</h3>
+        <div className="message-tools">
+          <span className="metadata tabular-nums">{wordCount} words</span>
+          <CopyButton text={message || ''} />
+        </div>
+      </div>
+      {subject && (
+        <div className="message-subject">
+          <div>
+            <p className="metadata">Subject</p>
+            <p className="subject-text">{subject}</p>
+          </div>
+          <CopyButton text={subject} />
+        </div>
+      )}
+      <p className="message-body">{message || 'No message generated.'}</p>
+    </article>
+  );
+}
+
 function GapsPanel({ gaps }) {
   const sections = [
     { label: 'Tools', items: gaps?.tools || [] },
     { label: 'Skills', items: gaps?.skills || [] },
     { label: 'Soft skills', items: gaps?.soft_skills || [] },
-  ].filter((s) => s.items.length > 0);
-
+  ].filter((section) => section.items.length > 0);
   if (sections.length === 0) return null;
 
   return (
-    <div
-      className="mb-6 rounded-lg border px-4 py-3"
-      style={{ borderColor: '#7C5A2E', background: 'rgba(124,90,46,0.08)' }}
-    >
-      <p className="text-xs font-semibold mb-2" style={{ color: '#E8A54B' }}>
-        Skills gap detected
-      </p>
-      <p className="text-xs mb-3" style={{ color: '#9E9088' }}>
-        These items appear in the job description but are not in your base resume. Consider adding them if you have relevant experience.
-      </p>
-      <div className="flex flex-col gap-2">
+    <details className="gaps-panel">
+      <summary>Keywords to review</summary>
+      <p>These exact terms were not matched in your base resume. Some may describe experience you already have in different words. Check each requirement before adding it.</p>
+      <div className="gap-groups">
         {sections.map(({ label, items }) => (
-          <div key={label} className="flex gap-2 flex-wrap items-start">
-            <span className="text-xs font-medium shrink-0" style={{ color: '#9E9088', minWidth: '64px' }}>
-              {label}:
-            </span>
-            <div className="flex flex-wrap gap-1">
-              {items.map((item) => (
-                <span
-                  key={item}
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(124,90,46,0.2)', color: '#E8A54B', border: '1px solid rgba(124,90,46,0.4)' }}
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
+          <div className="gap-group" key={label}>
+            <span className="gap-label">{label}</span>
+            <div className="tag-list">{items.map((item) => <span className="tag tag-warning" key={item}>{item}</span>)}</div>
           </div>
         ))}
       </div>
-    </div>
+    </details>
   );
 }
 
-// ─── Dynamic filename builder ────────────────────────────────────────
 function buildFilename(result, type, ext) {
   const sanitize = (s) => (s || '').replace(/[/\\:*?"<>|]/g, '').trim();
-  const name = 'Olumide Olusesi';
+  const name = sanitize(result?.candidate_name) || 'Applicant';
   const role = sanitize(result?.job_title);
   const company = sanitize(result?.company_name);
   const segments = [name, role, company, type].filter(Boolean);
   return `${segments.join('-')}.${ext}`;
 }
 
-// ─── Export as text file ────────────────────────────────────────────
 function ExportButton({ content, filename }) {
   const handleExport = () => {
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
     URL.revokeObjectURL(url);
   };
-
   return (
-    <button
-      onClick={handleExport}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
-    >
+    <button type="button" onClick={handleExport} className="button button-secondary button-small" title="Exports the original generated text">
       <Icons.Download />
-      Export .md
+      Markdown
     </button>
   );
 }
 
-// ─── Export as DOCX ─────────────────────────────────────────────────
 function ExportDocxButton({ contentId, filename }) {
-  const handleExport = () => {
-    const el = document.getElementById(contentId);
-    if (!el) return;
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+  const exportPending = useRef(false);
 
-    const htmlContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office"
-            xmlns:w="urn:schemas-microsoft-com:office:word"
-            xmlns="http://www.w3.org/TR/REC-html40">
+  const handleExport = async () => {
+    if (exportPending.current) return;
+    const el = document.getElementById(contentId);
+    if (!el) {
+      setExportError('Open the document you want to export and try again.');
+      return;
+    }
+
+    // Capture the current artboard, including visitor edits, before conversion.
+    const artboardHtml = el.innerHTML;
+    const documentStyles = typeof window !== 'undefined' ? window.getComputedStyle(document.documentElement) : null;
+    const documentInk = documentStyles?.getPropertyValue('--forest-ink').trim() || '#15372C';
+    const documentAccent = documentStyles?.getPropertyValue('--leaf-green').trim() || '#008561';
+    const documentMuted = documentStyles?.getPropertyValue('--muted-ink').trim() || '#5B6D65';
+    const htmlContent = `<!DOCTYPE html>
+      <html lang="en">
       <head>
         <meta charset="utf-8">
         <style>
           @page { size: A4; margin: 2.5cm; }
-          body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.5; color: #222; }
-          h1 { font-size: 22pt; font-weight: 700; color: #222; margin: 0 0 4px 0; }
-          h2 { font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1.5px solid #4657f1; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; color: #4657f1; }
+          body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.5; color: ${documentInk}; }
+          h1 { font-size: 22pt; font-weight: 700; color: ${documentInk}; margin: 0 0 4px 0; }
+          h2 { font-size: 10pt; font-weight: 700; text-transform: uppercase; border-bottom: 1.5px solid ${documentAccent}; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; color: ${documentAccent}; }
           h3 { font-size: 11pt; font-weight: 600; margin-top: 18px; margin-bottom: 4px; }
           p { margin-bottom: 4px; font-size: 10.5pt; }
           ul { padding-left: 20px; margin-bottom: 6px; }
           li { margin-bottom: 4px; font-size: 10.5pt; }
-          a { color: #222; text-decoration: underline; }
+          a { color: ${documentInk}; text-decoration: underline; }
+          .resume-contact { float: right; text-align: right; font-size: 9pt; color: ${documentMuted}; line-height: 1.75; }
+          table.exp-table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+          table.exp-table td { padding: 0; vertical-align: bottom; }
+          .exp-left { text-align: left; }
+          .exp-right { text-align: right; white-space: nowrap; }
+          table.exp-table h3 { margin: 0; }
         </style>
       </head>
-      <body>${el.innerHTML}</body>
+      <body>${artboardHtml}</body>
       </html>
     `;
 
-    const blob = new Blob(['\ufeff', htmlContent], {
-      type: 'application/msword'
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    exportPending.current = true;
+    setExporting(true);
+    setExportError(null);
+    let downloadUrl;
+    let anchor;
+    try {
+      const converted = await asBlob(htmlContent, {
+        orientation: 'portrait',
+        margins: { top: 1417, right: 1417, bottom: 1417, left: 1417 },
+      });
+      const blob = new Blob([converted], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      downloadUrl = URL.createObjectURL(blob);
+      anchor = document.createElement('a');
+      anchor.href = downloadUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+    } catch {
+      setExportError('Could not export the Word document. Please try again.');
+    } finally {
+      anchor?.remove();
+      if (downloadUrl) setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      exportPending.current = false;
+      setExporting(false);
+    }
   };
 
   return (
-    <button
-      onClick={handleExport}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
-    >
-      <Icons.Download />
-      Export .docx
-    </button>
-  );
-}
-
-// ─── Export as PDF ──────────────────────────────────────────────────
-function ExportPdfButton() {
-  return (
-    <button
-      onClick={() => window.print()}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399] transition-all duration-200"
-    >
-      <Icons.Download />
-      Export .pdf
-    </button>
-  );
-}
-
-// ─── Tab Component ──────────────────────────────────────────────────
-function Tabs({ tabs, activeTab, onTabChange }) {
-  return (
-    <div className="flex gap-1 p-1 rounded-lg bg-[#111113] border border-[#1A1A1D]">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onTabChange(tab.id)}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-            activeTab === tab.id
-              ? 'bg-[#1A1A1D] text-[#34D399] shadow-sm'
-              : 'text-[#9E9088] hover:text-[#C4B8AC]'
-          }`}
-        >
-          {tab.label}
-        </button>
-      ))}
+    <div className="export-control">
+      <button
+        type="button"
+        onClick={handleExport}
+        disabled={exporting}
+        aria-busy={exporting}
+        className="button button-secondary button-small"
+      >
+        <Icons.Download />
+        {exporting ? 'Preparing Word...' : 'Word (.docx)'}
+      </button>
+      {exportError && <p role="alert" className="field-error export-error">{exportError}</p>}
     </div>
   );
 }
 
-// ─── Score Ring ──────────────────────────────────────────────────────
+function ExportPdfButton({ filename }) {
+  const [printing, setPrinting] = useState(false);
+  const [printError, setPrintError] = useState(null);
+  const printPending = useRef(false);
+
+  const handlePrint = () => {
+    if (printPending.current) return;
+    const originalTitle = document.title;
+    const restoreTitle = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+      printPending.current = false;
+      setPrinting(false);
+    };
+
+    printPending.current = true;
+    setPrinting(true);
+    setPrintError(null);
+    document.title = filename || originalTitle;
+    window.addEventListener('afterprint', restoreTitle, { once: true });
+    try {
+      window.print();
+    } catch {
+      restoreTitle();
+      setPrintError('Could not open the print dialog. Please try again.');
+    }
+  };
+
+  return (
+    <div className="export-control">
+      <button type="button" onClick={handlePrint} disabled={printing} aria-busy={printing} className="button button-secondary button-small">
+        <Icons.Download />
+        {printing ? 'Printing...' : 'PDF'}
+      </button>
+      {printError && <p role="alert" className="field-error export-error">{printError}</p>}
+    </div>
+  );
+}
+
+function Tabs({ tabs, activeTab, onTabChange }) {
+  return (
+    <nav className="review-nav" aria-label="Application draft views">
+      {tabs.map((tab) => (
+        <button type="button" key={tab.id} onClick={() => onTabChange(tab.id)} className="review-tab" aria-pressed={activeTab === tab.id}>
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function ScoreRing({ score, label, size = 80 }) {
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? '#34D399' : score >= 60 ? '#F59E0B' : '#EF4444';
-
+  const tone = score >= 80 ? 'strong' : score >= 60 ? 'partial' : 'limited';
   return (
-    <div className="flex flex-col items-center gap-2">
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#1A1A1D" strokeWidth="4" />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="4"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-        />
-      </svg>
-      <div className="text-center -mt-14">
-        <div className="text-2xl font-bold" style={{ color }}>{score}</div>
+    <div className="score-item" data-tone={tone}>
+      <div className="score-ring" style={{ width: size, height: size }}>
+        <svg aria-hidden="true" width={size} height={size} className="score-graphic">
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" className="score-track" strokeWidth="4" />
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
+        </svg>
+        <span className="score-value tabular-nums">{score}</span>
       </div>
-      <div className="text-xs text-[#9E9088] mt-2 text-center">{label}</div>
+      <p className="score-label">{label}</p>
     </div>
   );
 }
 
-// ─── Before/After Card ──────────────────────────────────────────────
 function BeforeAfterCard({ item, index }) {
   return (
-    <div className="rounded-lg border border-[#1A1A1D] overflow-hidden">
-      <div className="px-4 py-2 bg-[#111113] border-b border-[#1A1A1D]">
-        <span className="text-xs font-mono text-[#9E9088]">Bullet #{index + 1}</span>
+    <article className="comparison-card">
+      <h3 className="comparison-heading">Bullet {index + 1}</h3>
+      <div className="comparison-columns">
+        <div><p className="comparison-label">Before</p><p>{item.before}</p></div>
+        <div><p className="comparison-label">After</p><p>{item.after}</p></div>
       </div>
-      <div className="grid md:grid-cols-2 divide-x divide-[#1A1A1D]">
-        <div className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#EF4444] bg-[#EF4444]/10 px-2 py-0.5 rounded">Before</span>
-          </div>
-          <p className="text-sm text-[#9E9088] leading-relaxed">{item.before}</p>
-        </div>
-        <div className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#34D399] bg-[#34D399]/10 px-2 py-0.5 rounded">After</span>
-          </div>
-          <p className="text-sm text-[#C4B8AC] leading-relaxed">{item.after}</p>
-        </div>
-      </div>
-      <div className="px-4 py-3 bg-[#0F0F10] border-t border-[#1A1A1D]">
-        <p className="text-xs text-[#9E9088]"><span className="text-[#F59E0B] font-medium">Why:</span> {item.why}</p>
-      </div>
-    </div>
+      <p className="comparison-reason"><span>Why it changed</span> {item.why}</p>
+    </article>
   );
 }
 
-// ─── Loading State ──────────────────────────────────────────────────
 function LoadingState() {
-  const messages = [
-    'Extracting keywords from job description',
-    'Mapping skills and reordering bullets',
-    'Generating targeted resume',
-    'Writing cover letter',
-    'Running ATS analysis',
+  return (
+    <section className="loading-card" role="status" aria-live="polite">
+      <h2>Preparing your application...</h2>
+      <p>Matching your experience to the role and creating your documents.</p>
+      <div className="draft-skeleton" aria-hidden="true"><div /><div /><div /><div /></div>
+    </section>
+  );
+}
+
+function HistorySidebar({ history, activeId, onSelect, onNewGeneration, isOpen, disabled }) {
+  if (!isOpen || history.length === 0) return null;
+  const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  return (
+    <aside id="visitor-history" className="session-card" aria-labelledby="history-title">
+      <div className="session-heading">
+        <h2 id="history-title">Current session</h2>
+
+      </div>
+      <p className="session-intro">Keep working with your experience. Create a new draft for another role.</p>
+      <button type="button" onClick={onNewGeneration} disabled={disabled} className="button button-secondary session-new">
+        <Icons.Plus /> New draft
+      </button>
+      {history.length === 0 ? (
+        <div className="session-empty"><p>No drafts yet.</p><p>Your generated applications will appear here.</p></div>
+      ) : (
+        <div className="session-list">
+          {history.map((item) => (
+            <button type="button" key={item.id} onClick={() => onSelect(item.id)} disabled={disabled} aria-pressed={activeId === item.id} className="session-item">
+              <span className="session-company">{item.company_name || 'Application'}</span>
+              {item.job_title && <span className="session-role">{item.job_title}</span>}
+              <span className="session-date tabular-nums">{formatDate(item.created_at)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function AnalysisSummary({ analysis }) {
+  if (!analysis) return null;
+  const groups = [
+    { label: 'Hard skills', items: analysis.hard_skills || [] },
+    { label: 'Soft skills', items: analysis.soft_skills || [] },
+    { label: 'Keywords', items: analysis.keyword_map?.slice(0, 12) || [] },
   ];
-  const [msgIndex, setMsgIndex] = useState(0);
-
-  useState(() => {
-    const interval = setInterval(() => {
-      setMsgIndex((prev) => (prev + 1) % messages.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  });
-
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-6">
-      <div className="flex gap-1.5">
-        <div className="w-2 h-2 rounded-full bg-[#34D399] loading-dot" />
-        <div className="w-2 h-2 rounded-full bg-[#34D399] loading-dot" />
-        <div className="w-2 h-2 rounded-full bg-[#34D399] loading-dot" />
-      </div>
-      <p className="text-sm text-[#9E9088] animate-pulse">{messages[msgIndex]}...</p>
-      <p className="text-xs text-[#555] mt-2">This typically takes 30-45 seconds</p>
-    </div>
+    <section className="analysis-summary" aria-labelledby="analysis-title">
+      <h3 id="analysis-title">Role requirements</h3>
+      <div className="analysis-columns">{groups.map(({ label, items }) => (
+        <div key={label}><h4>{label}</h4><div className="tag-list">{items.map((item, index) => <span className="tag" key={index}>{item}</span>)}</div></div>
+      ))}</div>
+    </section>
   );
 }
 
-// ─── History Sidebar ────────────────────────────────────────────────
-function HistorySidebar({ history, activeId, onSelect, onDelete, onNewGeneration, isOpen }) {
-  if (!isOpen) return null;
+function PrivacyDisclosure() {
+  return <p className="privacy-disclosure">Your resume, job description, and optional note are sent to Claude for generation. PDFs are processed to extract text. Inputs and history stay in this tab’s memory; reload or close to clear them. Export drafts you want to keep.</p>;
+}
 
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+// Renderer identities stay stable while visitors edit the document in place.
+const RESUME_MARKDOWN_COMPONENTS = {
+  img: () => null,
+  p: ({ children }) => {
+    // Detect contact block: paragraph containing ||| separators
+    const childArray = Array.isArray(children) ? children : [children];
+    const fullText = childArray.map(c => (typeof c === 'string' ? c : '')).join('');
+    if (fullText.includes('|||')) {
+      // Split on ||| to get individual contact items
+      const items = [];
+      childArray.forEach((child) => {
+        if (typeof child === 'string') {
+          child.split('|||').forEach((seg) => {
+            if (seg.trim()) items.push(seg.trim());
+          });
+        } else {
+          items.push(child);
+        }
+      });
+      return (
+        <div className="resume-contact">
+          {items.map((item, i) => <div key={i}>{item}</div>)}
+        </div>
+      );
+    }
+    return <p>{children}</p>;
+  },
+  h3: ({ children }) => {
+    const childArray = Array.isArray(children) ? children : [children];
 
+    // Check if any child contains the ||| delimiter
+    const fullText = childArray.map(c => (typeof c === 'string' ? c : '')).join('');
+    if (fullText.includes('|||')) {
+      // Split children into left and right parts at the ||| delimiter
+      const leftParts = [];
+      const rightParts = [];
+      let foundDelimiter = false;
+
+      childArray.forEach((child) => {
+        if (typeof child === 'string' && child.includes('|||')) {
+          const [left, right] = child.split('|||');
+          if (left.trim()) leftParts.push(left.trim());
+          foundDelimiter = true;
+          if (right?.trim()) rightParts.push(right.trim());
+        } else if (!foundDelimiter) {
+          leftParts.push(child);
+        } else {
+          rightParts.push(child);
+        }
+      });
+
+      return (
+        <table className="exp-table">
+          <tbody>
+            <tr>
+              <td className="exp-left">
+                <h3>{leftParts}</h3>
+              </td>
+              <td className="exp-right">
+                <h3>{rightParts}</h3>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      );
+    }
+    return <h3>{children}</h3>;
+  }
+};
+const COVER_MARKDOWN_COMPONENTS = { img: () => null };
+
+function sanitizeDocumentHtml(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const allowedTags = new Set(['A', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'DIV', 'EM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR', 'I', 'LI', 'OL', 'P', 'PRE', 'S', 'SPAN', 'STRONG', 'TABLE', 'TBODY', 'TD', 'TFOOT', 'TH', 'THEAD', 'TR', 'U', 'UL']);
+  const blockedTags = new Set(['AUDIO', 'EMBED', 'IFRAME', 'IMG', 'INPUT', 'LINK', 'MATH', 'OBJECT', 'PICTURE', 'SCRIPT', 'SOURCE', 'STYLE', 'SVG', 'VIDEO']);
+  const allowedClasses = new Set(['resume-contact', 'exp-table', 'exp-left', 'exp-right']);
+  for (const element of template.content.querySelectorAll('*')) {
+    if (!allowedTags.has(element.tagName)) {
+      if (blockedTags.has(element.tagName)) element.remove();
+      else element.replaceWith(...element.childNodes);
+      continue;
+    }
+    const classes = [...element.classList].filter((name) => allowedClasses.has(name));
+    const href = element.tagName === 'A' ? element.getAttribute('href') : null;
+    for (const attribute of [...element.attributes]) element.removeAttribute(attribute.name);
+    if (classes.length) element.className = classes.join(' ');
+    if (href) {
+      try {
+        const url = new URL(href, 'https://resume-engine.invalid');
+        if (['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol)) element.setAttribute('href', href);
+      } catch { /* Keep invalid links as readable text. */ }
+    }
+  }
+  return template.innerHTML;
+}
+
+function EditableDocument({ contentId, source, components, label, isEditing, savedHtml, onSnapshot }) {
+  const documentRef = useRef(null);
+  const initialHtml = useRef(savedHtml);
+  // Reusing this exact element prevents React from reconciling visitor-edited children.
+  const markup = useMemo(() => <ReactMarkdown components={components}>{source}</ReactMarkdown>, [source, components]);
+  useLayoutEffect(() => {
+    if (initialHtml.current !== undefined && documentRef.current) {
+      documentRef.current.innerHTML = sanitizeDocumentHtml(initialHtml.current);
+    }
+  }, []);
+  const captureSnapshot = (event) => onSnapshot(sanitizeDocumentHtml(event.currentTarget.innerHTML));
   return (
-    <div className="w-72 shrink-0 border-r border-[#1A1A1D] bg-[#0C0C0D] flex flex-col h-full">
-      {/* Sidebar Header */}
-      <div className="p-4 border-b border-[#1A1A1D]">
-        <button
-          onClick={onNewGeneration}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-[#34D399] text-[#0A0A0B] hover:bg-[#2CC48A] transition-all duration-200"
-        >
-          <Icons.Plus />
-          New Generation
-        </button>
-      </div>
-
-      {/* History List */}
-      <div className="flex-1 overflow-y-auto">
-        {history.length === 0 ? (
-          <div className="p-4 text-center">
-            <Icons.Clock />
-            <p className="text-xs text-[#555] mt-3">No saved generations yet.</p>
-            <p className="text-xs text-[#3a3a3f] mt-1">Generate a resume to see it here.</p>
-          </div>
-        ) : (
-          <div className="py-2">
-            {history.map((item) => (
-              <div
-                key={item.id}
-                className={`group relative mx-2 mb-1 rounded-lg cursor-pointer transition-all duration-150 ${
-                  activeId === item.id
-                    ? 'bg-[#1A1A1D] border border-[#34D399]/30'
-                    : 'hover:bg-[#111113] border border-transparent'
-                }`}
-              >
-                <div
-                  onClick={() => onSelect(item.id)}
-                  className="px-3 py-3 pr-8"
-                >
-                  <p className={`text-sm font-medium truncate ${
-                    activeId === item.id ? 'text-[#34D399]' : 'text-[#C4B8AC]'
-                  }`}>
-                    {item.company_name}
-                  </p>
-                  {item.job_title && (
-                    <p className="text-xs text-[#555] truncate mt-0.5">{item.job_title}</p>
-                  )}
-                  <p className="text-[10px] text-[#3a3a3f] mt-1 flex items-center gap-1">
-                    <Icons.Clock />
-                    {formatDate(item.created_at)}
-                  </p>
-                </div>
-                {/* Delete button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(item.id);
-                  }}
-                  className="absolute top-3 right-2 opacity-0 group-hover:opacity-100 p-1 rounded text-[#555] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all duration-150"
-                  title="Delete"
-                >
-                  <Icons.Trash />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    <div
+      ref={documentRef} className="resume-paper" id={contentId} data-editing={isEditing}
+      role={isEditing ? 'textbox' : undefined} aria-label={isEditing ? label : undefined}
+      aria-multiline={isEditing || undefined} contentEditable={isEditing ? 'plaintext-only' : false}
+      suppressContentEditableWarning={true} onInput={captureSnapshot} onBlur={captureSnapshot}
+    >{markup}</div>
   );
 }
 
-// ─── Main Page ──────────────────────────────────────────────────────
 export default function Home() {
+  const [baseResume, setBaseResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [companyHook, setCompanyHook] = useState('');
   const [result, setResult] = useState(null);
@@ -474,8 +536,22 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('resume');
   const [history, setHistory] = useState([]);
   const [activeHistoryId, setActiveHistoryId] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [touched, setTouched] = useState({});
+  const generationPending = useRef(false);
+  const [inputsExpanded, setInputsExpanded] = useState(true);
+  const [extracting, setExtracting] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [uploadMessage, setUploadMessage] = useState(null);
+  const extractionPending = useRef(false);
+  const fileInputRef = useRef(null);
+  const reviewHeadingRef = useRef(null);
+  const documentSnapshots = useRef(new Map());
+
+  useEffect(() => {
+    if (result && !inputsExpanded) reviewHeadingRef.current?.focus();
+  }, [result, inputsExpanded]);
 
   const tabs = [
     { id: 'resume', label: 'Resume' },
@@ -485,512 +561,342 @@ export default function Home() {
     { id: 'cold_messages', label: 'Cold Messages' },
   ];
 
-  // Load history on mount
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
-    try {
-      const res = await fetch('/api/history');
-      if (res.ok) {
-        const data = await res.json();
-        setHistory(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch history:', err);
-    }
+  const inputErrors = {
+    baseResume: baseResume.trim().length < 100
+      ? 'Paste at least 100 characters from your base resume.'
+      : baseResume.length > 30000 ? 'Use 30,000 characters or fewer for your base resume.' : null,
+    jobDescription: jobDescription.trim().length < 50
+      ? 'Paste at least 50 characters from the job description.'
+      : jobDescription.length > 30000 ? 'Use 30,000 characters or fewer for the job description.' : null,
+    companyHook: companyHook.length > 1000 ? 'Use 1,000 characters or fewer for the company note.' : null,
+  };
+  const busy = loading || extracting;
+  const canGenerate = !Object.values(inputErrors).some(Boolean) && !extracting;
+  const activeDraft = history.find((item) => item.id === activeHistoryId);
+  const draftInputsChanged = Boolean(result && activeDraft && (
+    baseResume.trim() !== activeDraft.baseResume ||
+    jobDescription.trim() !== activeDraft.jobDescription ||
+    companyHook.trim() !== activeDraft.companyHook
+  ));
+  const markTouched = (field) => setTouched((previous) => ({ ...previous, [field]: true }));
+  const saveDocumentSnapshot = (kind, html) => {
+    if (!activeHistoryId) return;
+    const previous = documentSnapshots.current.get(activeHistoryId) || {};
+    documentSnapshots.current.set(activeHistoryId, { ...previous, [kind]: html });
   };
 
-  const handleSelectHistory = async (id) => {
-    try {
-      const res = await fetch(`/api/history/${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data.result);
-        setJobDescription(data.job_description || '');
-        setActiveHistoryId(id);
-        setActiveTab('resume');
-        setError(null);
-      }
-    } catch (err) {
-      console.error('Failed to load generation:', err);
-    }
-  };
-
-  const handleDeleteHistory = async (id) => {
-    try {
-      const res = await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setHistory((prev) => prev.filter((item) => item.id !== id));
-        if (activeHistoryId === id) {
-          setResult(null);
-          setActiveHistoryId(null);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to delete:', err);
-    }
+  const handleSelectHistory = (id) => {
+    if (generationPending.current || extractionPending.current) return;
+    const item = history.find((entry) => entry.id === id);
+    if (!item) return;
+    setResult(item.result);
+    setInputsExpanded(false);
+    setSidebarOpen(false);
+    setUploadError(null);
+    setUploadMessage(null);
+    setBaseResume(item.baseResume);
+    setJobDescription(item.jobDescription);
+    setCompanyHook(item.companyHook);
+    setActiveHistoryId(id);
+    setActiveTab('resume');
+    setIsEditing(false);
+    setTouched({});
+    setError(null);
   };
 
   const handleNewGeneration = () => {
+    if (generationPending.current || extractionPending.current) return;
+    setInputsExpanded(true);
+    setSidebarOpen(false);
+    setUploadError(null);
+    setUploadMessage(null);
     setResult(null);
     setActiveHistoryId(null);
     setJobDescription('');
     setCompanyHook('');
     setError(null);
+    setTouched({});
+    setIsEditing(false);
     setActiveTab('resume');
   };
 
-  const handleGenerate = async () => {
-    if (!jobDescription.trim()) return;
+  const handlePdfUpload = async (event) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file || generationPending.current || extractionPending.current) return;
+    setUploadError(null);
+    setUploadMessage(null);
+    if (!file.name.toLowerCase().endsWith('.pdf') || (file.type && file.type !== 'application/pdf')) {
+      setUploadError('Choose a PDF file, or paste your resume below.');
+      return;
+    }
+    if (!file.size || file.size > 5 * 1024 * 1024) {
+      setUploadError('Choose a nonempty PDF of 5 MiB or less.');
+      return;
+    }
 
+    extractionPending.current = true;
+    setExtracting(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await fetch('/api/resume/extract', { method: 'POST', body });
+      let data;
+      try { data = await response.json(); }
+      catch { throw new Error('Could not read the PDF response. Please paste your resume instead.'); }
+      if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Could not read this PDF. Please paste your resume instead.');
+      if (!Number.isInteger(data.pageCount) || data.pageCount < 1 || data.pageCount > 30) {
+        throw new Error('Choose a PDF with 30 pages or fewer.');
+      }
+      if (typeof data.text !== 'string' || data.text.trim().length < 100) {
+        throw new Error('This PDF does not contain enough readable text. Try a text-based PDF, or paste your resume.');
+      }
+      if (data.text.trim().length > 30000) {
+        throw new Error('The PDF contains more than 30,000 characters. Paste a shorter resume instead.');
+      }
+      setBaseResume(data.text.trim());
+      setTouched((previous) => ({ ...previous, baseResume: true }));
+      setUploadMessage(`Text loaded from ${data.pageCount} ${data.pageCount === 1 ? 'page' : 'pages'}. Review and correct it before generating.`);
+    } catch (err) {
+      setUploadError(err.message || 'Could not read this PDF. Please paste your resume instead.');
+    } finally {
+      extractionPending.current = false;
+      setExtracting(false);
+    }
+  };
+
+  const handleGenerate = async () => {
+    setTouched({ baseResume: true, jobDescription: true, companyHook: true });
+    if (!canGenerate || generationPending.current || extractionPending.current) return;
+
+    generationPending.current = true;
+    setInputsExpanded(true);
+    const inputs = {
+      baseResume: baseResume.trim(),
+      jobDescription: jobDescription.trim(),
+      companyHook: companyHook.trim(),
+    };
     setLoading(true);
     setError(null);
     setResult(null);
     setActiveHistoryId(null);
+    setIsEditing(false);
     setActiveTab('resume');
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobDescription, companyHook }),
+        body: JSON.stringify(inputs),
       });
-
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Generation failed. Please try again.');
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Generation failed');
-      }
-
+      const id = crypto.randomUUID();
       setResult(data);
-      // Refresh history to include the new entry
-      await fetchHistory();
+      setInputsExpanded(false);
+      setSidebarOpen(false);
+      setHistory((previous) => [{
+        id,
+        created_at: new Date().toISOString(),
+        company_name: data.company_name,
+        job_title: data.job_title,
+        result: data,
+        ...inputs,
+      }, ...previous]);
+      setActiveHistoryId(id);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Generation failed. Please try again.');
     } finally {
+      generationPending.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-[#1A1A1D] px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Sidebar Toggle */}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1.5 rounded-md text-[#9E9088] hover:text-[#F5F0EB] hover:bg-[#1A1A1D] transition-all duration-150"
-              title={sidebarOpen ? 'Hide history' : 'Show history'}
-            >
-              <Icons.Sidebar />
+    <div className="resume-app">
+      <header className="site-header">
+        <div className="site-header-inner">
+          <span className="wordmark">Resume Engine</span>
+          {history.length > 0 && (
+            <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)} className="button button-header" aria-label={sidebarOpen ? 'Hide history' : 'Show history'} aria-expanded={sidebarOpen} aria-controls="visitor-history">
+              <Icons.Sidebar /> Session history
             </button>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#34D399] to-[#059669] flex items-center justify-center">
-              <span className="text-[#0A0A0B] font-bold text-sm">R</span>
-            </div>
-            <div>
-              <h1 className="font-display text-lg text-[#F5F0EB]">Resume Engine</h1>
-              <p className="text-[10px] text-[#555] tracking-widest uppercase">Olumide Olusesi</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {result && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#34D399]" />
-                <span className="text-xs text-[#9E9088]">Generated</span>
-              </div>
-            )}
-            {history.length > 0 && (
-              <span className="text-[10px] text-[#555] font-mono">{history.length} saved</span>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
-      {/* Main Layout: Sidebar + Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* History Sidebar */}
-        <HistorySidebar
-          history={history}
-          activeId={activeHistoryId}
-          onSelect={handleSelectHistory}
-          onDelete={handleDeleteHistory}
-          onNewGeneration={handleNewGeneration}
-          isOpen={sidebarOpen}
-        />
+      <main className="app-main">
+        {!result && !loading && (
+          <section className="intro" aria-labelledby="intro-title">
+            <div className="intro-copy">
+              <h1 id="intro-title">Automate your resume tailoring.</h1>
+              <p>Automatically create a targeted resume, cover letter, and outreach from your resume and a job description.</p>
+            </div>
+            <img className="intro-illustration" src="/tailoring-illustration.png" width="280" height="187" alt="A resume and role requirements combine into a tailored application." />
+          </section>
+        )}
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto px-6 py-8">
-          <div className="max-w-5xl mx-auto">
-            {/* Input Section */}
-            <div className="mb-8">
-              <div className="flex items-end justify-between mb-3">
-                <div>
-                  <h2 className="text-sm font-medium text-[#F5F0EB] mb-1">Job Description</h2>
-                  <p className="text-xs text-[#555]">
-                    Paste the full JD below. The engine will extract keywords, reorder bullets, and generate a targeted resume + cover letter.
-                  </p>
+        <div className="input-layout" data-history-open={sidebarOpen && history.length > 0}>
+          <div className="creation-region">
+            {result && !inputsExpanded && !loading && (
+              <section className="inputs-summary" aria-labelledby="inputs-summary-title">
+                <div><h2 id="inputs-summary-title">Your application inputs</h2><p>{draftInputsChanged ? 'Inputs changed. Regenerate to update this application.' : 'Your resume and job description are ready to reuse.'}</p></div>
+                <div className="inputs-summary-actions">
+                  <button type="button" className="button button-secondary" onClick={() => setInputsExpanded(true)} disabled={busy}>Edit inputs</button>
+                  <button type="button" className="button button-primary" onClick={handleGenerate} disabled={busy || !canGenerate}>Regenerate application</button>
                 </div>
-                <span className="text-xs text-[#555] font-mono tabular-nums">
-                  {jobDescription.length > 0 ? `${jobDescription.length} chars` : ''}
-                </span>
+              </section>
+            )}
+
+            <form className="application-form" autoComplete="off" noValidate hidden={Boolean(result) && !inputsExpanded && !loading} onSubmit={(event) => { event.preventDefault(); handleGenerate(); }} aria-busy={busy}>
+              {result && inputsExpanded && <div className="editing-inputs-bar"><p>Update your inputs, then generate a new application.</p><button type="button" className="button button-secondary button-small" onClick={() => setInputsExpanded(false)} disabled={busy}>Back to draft</button></div>}
+              <div className="input-pair">
+                <section className="input-card experience-card" aria-labelledby="experience-title">
+                  <div className="step-heading">
+                    <h2 id="experience-title"><label htmlFor="base-resume"><span className="step-label">Step 1</span>Enter your base resume</label></h2>
+                    <button type="button" className="button button-secondary button-small upload-button" onClick={() => fileInputRef.current?.click()} disabled={busy}>{extracting ? 'Reading PDF...' : 'Upload PDF'}</button>
+                    <input id="resume-pdf" name="resumePdf" ref={fileInputRef} type="file" accept=".pdf,application/pdf" className="visually-hidden" tabIndex={-1} aria-label="Upload a resume PDF" disabled={busy} onChange={handlePdfUpload} />
+                  </div>
+                  <p id="base-resume-hint" className="field-hint">Paste your experience, skills, education, and contact details, or upload a text-based PDF of up to 5 MiB and 30 pages.</p>
+                  {extracting && <p className="upload-message" role="status">Extracting resume text. Your current text will be replaced when the PDF is ready.</p>}
+                  {uploadError && <p className="field-error upload-error" role="alert">{uploadError}</p>}
+                  {uploadMessage && <p className="upload-message" role="status">{uploadMessage}</p>}
+                  <textarea
+                    id="base-resume" name="baseResume" value={baseResume}
+                    onChange={(event) => { setBaseResume(event.target.value); setUploadMessage(null); }} onBlur={() => markTouched('baseResume')}
+                    placeholder="Paste your current resume here..." rows={12} minLength={100} maxLength={30000} required disabled={busy}
+                    aria-invalid={Boolean(touched.baseResume && inputErrors.baseResume)}
+                    aria-describedby={`base-resume-hint base-resume-count${touched.baseResume && inputErrors.baseResume ? ' base-resume-error' : ''}`}
+                    className="text-field resume-field"
+                  />
+                  <div className="field-details" id="base-resume-count"><span>100 characters minimum</span><span className="tabular-nums">{baseResume.length.toLocaleString('en')} / 30,000</span></div>
+                  {touched.baseResume && inputErrors.baseResume && <p id="base-resume-error" className="field-error">{inputErrors.baseResume}</p>}
+                </section>
+
+                <section className="input-card role-card" aria-labelledby="role-title">
+                  <div className="step-heading"><h2 id="role-title"><label htmlFor="job-description"><span className="step-label">Step 2</span>Job description</label></h2></div>
+                  <p id="job-description-hint" className="field-hint">Paste the full job description so your application reflects the responsibilities, skills, and company.</p>
+                  <textarea
+                    id="job-description" name="jobDescription" value={jobDescription}
+                    onChange={(event) => setJobDescription(event.target.value)} onBlur={() => markTouched('jobDescription')}
+                    placeholder="Paste the full job description here..." rows={8} minLength={50} maxLength={30000} required disabled={busy}
+                    aria-invalid={Boolean(touched.jobDescription && inputErrors.jobDescription)}
+                    aria-describedby={`job-description-hint job-description-count${touched.jobDescription && inputErrors.jobDescription ? ' job-description-error' : ''}`}
+                    className="text-field job-field"
+                  />
+                  <div className="field-details" id="job-description-count"><span>50 characters minimum</span><span className="tabular-nums">{jobDescription.length.toLocaleString('en')} / 30,000</span></div>
+                  {touched.jobDescription && inputErrors.jobDescription && <p id="job-description-error" className="field-error">{inputErrors.jobDescription}</p>}
+                  <label htmlFor="company-hook" className="field-label company-note-label">Company note <span>(optional)</span></label>
+                  <textarea
+                    id="company-hook" name="companyHook" value={companyHook}
+                    onChange={(event) => setCompanyHook(event.target.value)} onBlur={() => markTouched('companyHook')}
+                    placeholder="A product, value, or detail that caught your attention." rows={2} maxLength={1000} disabled={busy}
+                    aria-invalid={Boolean(touched.companyHook && inputErrors.companyHook)}
+                    aria-describedby={`company-hook-hint${touched.companyHook && inputErrors.companyHook ? ' company-hook-error' : ''}`}
+                    className="text-field company-field"
+                  />
+                  <p id="company-hook-hint" className="field-details">Personalize your outreach. Up to 1,000 characters.</p>
+                  {touched.companyHook && inputErrors.companyHook && <p id="company-hook-error" className="field-error">{inputErrors.companyHook}</p>}
+                </section>
               </div>
 
-              <textarea
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                placeholder="Paste the complete job description here..."
-                rows={8}
-                className="w-full bg-[#111113] border border-[#1A1A1D] rounded-lg px-4 py-3 text-sm text-[#C4B8AC] placeholder-[#3a3a3f] resize-y font-body leading-relaxed transition-all duration-200"
-              />
-
-              <textarea
-                value={companyHook}
-                onChange={(e) => setCompanyHook(e.target.value)}
-                placeholder="Optional: paste one thing you noticed about the company — a product, a value, recent news. Makes the hook specific."
-                rows={2}
-                className="w-full bg-transparent text-[#9E9088] placeholder-[#555] text-xs resize-none focus:outline-none"
-                style={{ borderTop: '1px solid #1A1A1D', paddingTop: '10px', marginTop: '10px' }}
-              />
-
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-xs text-[#555]">
-                  ~$0.05 per generation · Powered by Claude Sonnet
-                </p>
-                <button
-                  onClick={handleGenerate}
-                  disabled={loading || jobDescription.trim().length < 50}
-                  className={`btn-generate flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                    loading || jobDescription.trim().length < 50
-                      ? 'bg-[#1A1A1D] text-[#555] cursor-not-allowed'
-                      : 'bg-[#34D399] text-[#0A0A0B] hover:bg-[#2CC48A] hover:shadow-lg hover:shadow-[#34D399]/20'
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="flex gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#0A0A0B] loading-dot" />
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#0A0A0B] loading-dot" />
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#0A0A0B] loading-dot" />
-                      </div>
-                      Generating
-                    </>
-                  ) : (
-                    <>
-                      Generate
-                      <Icons.Arrow />
-                    </>
-                  )}
+              <div className="generation-row">
+                <button type="submit" disabled={busy || !canGenerate} className="button button-primary generate-application">
+                  {loading ? 'Generating...' : extracting ? 'Reading your PDF...' : 'Generate application'}
+                  {!busy && <Icons.Arrow />}
                 </button>
               </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="mb-6 p-4 rounded-lg border border-[#EF4444]/30 bg-[#EF4444]/5">
-                <p className="text-sm text-[#EF4444]">{error}</p>
-              </div>
-            )}
-
-            {/* Loading */}
-            {loading && <LoadingState />}
-
-            {/* Results */}
-            {result && !loading && (
-              <div>
-                {/* Tabs */}
-                <div className="flex flex-col gap-3 mb-6">
-                  <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-                  <div className="flex justify-end gap-2">
-                    {(activeTab === 'resume' || activeTab === 'cover_letter') && (
-                      <>
-                        <CopyButton
-                          text={activeTab === 'resume' ? result.resume : result.cover_letter}
-                          contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
-                          label="Copy"
-                        />
-                        <ExportButton
-                          content={activeTab === 'resume' ? result.resume : result.cover_letter}
-                          filename={activeTab === 'resume' ? buildFilename(result, 'Resume', 'md') : buildFilename(result, 'Cover Letter', 'md')}
-                        />
-                        <ExportDocxButton
-                          contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'}
-                          filename={activeTab === 'resume' ? buildFilename(result, 'Resume', 'docx') : buildFilename(result, 'Cover Letter', 'docx')}
-                        />
-                        <ExportPdfButton />
-                        <button
-                          onClick={() => setIsEditing(!isEditing)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-all duration-200 ${
-                            isEditing 
-                              ? 'border-[#34D399] text-[#34D399] bg-[#34D399]/10' 
-                              : 'border-[#2C2C30] text-[#9E9088] hover:border-[#34D399] hover:text-[#34D399]'
-                          }`}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                          {isEditing ? 'Done Editing' : 'Edit Artboard'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Gaps Panel */}
-                <GapsPanel gaps={result.gaps} />
-
-                {/* Tab Content */}
-
-                {/* Resume Tab - A4 Paper */}
-                {activeTab === 'resume' && (
-                  <>
-                  <p style={{ textAlign: 'center', fontSize: '0.72rem', marginBottom: '0.35rem', color: '#555', userSelect: 'none' }}>
-                    PDF filename:{' '}
-                    <span style={{ color: '#E8A54B', userSelect: 'all', cursor: 'text' }}>
-                      {buildFilename(result, 'Resume', 'pdf')}
-                    </span>
-                  </p>
-                  <div className="py-6 flex justify-center">
-                    <div 
-                      className="resume-paper" 
-                      id="resume-content"
-                      contentEditable={isEditing}
-                      suppressContentEditableWarning={true}
-                    >
-                      <ReactMarkdown
-                        components={{
-                          p: ({ children }) => {
-                            // Detect contact block: paragraph containing ||| separators
-                            const childArray = Array.isArray(children) ? children : [children];
-                            const fullText = childArray.map(c => (typeof c === 'string' ? c : '')).join('');
-                            if (fullText.includes('|||')) {
-                              // Split on ||| to get individual contact items
-                              const items = [];
-                              childArray.forEach((child) => {
-                                if (typeof child === 'string') {
-                                  child.split('|||').forEach((seg) => {
-                                    if (seg.trim()) items.push(seg.trim());
-                                  });
-                                } else {
-                                  items.push(child);
-                                }
-                              });
-                              return (
-                                <div className="resume-contact">
-                                  {items.map((item, i) => <div key={i}>{item}</div>)}
-                                </div>
-                              );
-                            }
-                            return <p>{children}</p>;
-                          },
-                          h3: ({ children }) => {
-                            const childArray = Array.isArray(children) ? children : [children];
-                            
-                            // Check if any child contains the ||| delimiter
-                            const fullText = childArray.map(c => (typeof c === 'string' ? c : '')).join('');
-                            if (fullText.includes('|||')) {
-                              // Split children into left and right parts at the ||| delimiter
-                              const leftParts = [];
-                              const rightParts = [];
-                              let foundDelimiter = false;
-                              
-                              childArray.forEach((child) => {
-                                if (typeof child === 'string' && child.includes('|||')) {
-                                  const [left, right] = child.split('|||');
-                                  if (left.trim()) leftParts.push(left.trim());
-                                  foundDelimiter = true;
-                                  if (right?.trim()) rightParts.push(right.trim());
-                                } else if (!foundDelimiter) {
-                                  leftParts.push(child);
-                                } else {
-                                  rightParts.push(child);
-                                }
-                              });
-                              
-                              return (
-                                <table className="exp-table">
-                                  <tbody>
-                                    <tr>
-                                      <td className="exp-left">
-                                        <h3>{leftParts}</h3>
-                                      </td>
-                                      <td className="exp-right">
-                                        <h3>{rightParts}</h3>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              );
-                            }
-                            return <h3>{children}</h3>;
-                          }
-                        }}
-                      >{result.resume}</ReactMarkdown>
-                    </div>
-                  </div>
-                  </>
-                )}
-
-                {/* Cover Letter Tab - A4 Paper */}
-                {activeTab === 'cover_letter' && (
-                  <div className="py-6 flex justify-center">
-                    <div 
-                      className="resume-paper" 
-                      id="cover-letter-content"
-                      contentEditable={isEditing}
-                      suppressContentEditableWarning={true}
-                    >
-                      <ReactMarkdown>{result.cover_letter}</ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-
-                {/* ATS & Before/After - Dark Panel */}
-                {(activeTab === 'ats' || activeTab === 'before_after') && (
-                <div className="rounded-xl border border-[#1A1A1D] bg-[#0F0F10] min-h-[400px]">
-                  {/* ATS Score Tab */}
-                  {activeTab === 'ats' && result.ats_score && (
-                    <div className="p-6 md:p-8">
-                      <div className="flex flex-wrap gap-8 justify-center mb-10 pt-4">
-                        <ScoreRing score={result.ats_score.overall} label="Overall Match" size={100} />
-                        <ScoreRing score={result.ats_score.keyword_coverage} label="Keyword Coverage" size={100} />
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="rounded-lg border border-[#1A1A1D] p-5">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#34D399] mb-3">Strongest Match Areas</h3>
-                          <ul className="space-y-2">
-                            {result.ats_score.strongest_areas?.map((area, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-[#C4B8AC]">
-                                <span className="text-[#34D399] mt-0.5">✓</span>
-                                {area}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="rounded-lg border border-[#1A1A1D] p-5">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#F59E0B] mb-3">Gaps to Address</h3>
-                          <ul className="space-y-2">
-                            {result.ats_score.gaps?.length > 0 ? (
-                              result.ats_score.gaps.map((gap, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-[#C4B8AC]">
-                                  <span className="text-[#F59E0B] mt-0.5">△</span>
-                                  {gap}
-                                </li>
-                              ))
-                            ) : (
-                              <li className="text-sm text-[#9E9088]">No significant gaps detected</li>
-                            )}
-                          </ul>
-                        </div>
-                      </div>
-
-                      {/* 6-Second Scan Test */}
-                      {result.six_second_test && (
-                        <div className="mt-6 rounded-lg border border-[#1A1A1D] p-5 bg-[#111113]">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#C4B8AC] mb-2">6-Second Scan Test</h3>
-                          <p className="text-sm text-[#9E9088] leading-relaxed">{result.six_second_test}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Before/After Tab */}
-                  {activeTab === 'before_after' && result.before_after && (
-                    <div className="p-6 md:p-8 space-y-4">
-                      <p className="text-xs text-[#555] mb-4">
-                        The 3 weakest bullets from your base resume, shown alongside their optimized versions.
-                      </p>
-                      {result.before_after.map((item, i) => (
-                        <BeforeAfterCard key={i} item={item} index={i} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                )}
-
-                {activeTab === 'cold_messages' && (
-                  <div className="flex flex-col gap-4">
-                    <p className="text-xs" style={{ color: '#9E9088' }}>
-                      LinkedIn DMs tailored to this role and company. Replace [Name] with the recipient's name before sending.
-                    </p>
-                    <ColdMessageCard
-                      label="To a Recruiter"
-                      message={result.cold_messages?.recruiter}
-                      subject={result.cold_messages?.subject_lines?.recruiter}
-                    />
-                    <ColdMessageCard
-                      label="To a Product Designer"
-                      message={result.cold_messages?.designer}
-                      subject={result.cold_messages?.subject_lines?.designer}
-                    />
-                  </div>
-                )}
-
-                {/* Analysis Summary */}
-                {result.analysis && (
-                  <div className="mt-6 rounded-xl border border-[#1A1A1D] bg-[#0F0F10] p-6">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#9E9088] mb-4">JD Analysis</h3>
-                    <div className="grid md:grid-cols-3 gap-6">
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-widest text-[#555] mb-2">Hard Skills Extracted</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {result.analysis.hard_skills?.map((skill, i) => (
-                            <span key={i} className="px-2 py-0.5 text-xs rounded bg-[#34D399]/10 text-[#34D399] border border-[#34D399]/20">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-widest text-[#555] mb-2">Soft Skills Extracted</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {result.analysis.soft_skills?.map((skill, i) => (
-                            <span key={i} className="px-2 py-0.5 text-xs rounded bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-widest text-[#555] mb-2">Keyword Map</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {result.analysis.keyword_map?.slice(0, 12).map((kw, i) => (
-                            <span key={i} className="px-2 py-0.5 text-xs rounded bg-[#1A1A1D] text-[#9E9088] border border-[#2C2C30]">
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!result && !loading && !error && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-[#111113] border border-[#1A1A1D] flex items-center justify-center mb-6">
-                  <span className="text-2xl">⚡</span>
-                </div>
-                <h3 className="font-display text-lg text-[#F5F0EB] mb-2">Paste a job description to get started</h3>
-                <p className="text-sm text-[#555] max-w-md">
-                  The engine will analyze the JD, extract keywords, reorder your bullets by relevance, generate a targeted resume and cover letter, and score your ATS match.
-                </p>
-              </div>
-            )}
+              {error && <div className="generation-error" role="alert"><p>{error}</p></div>}
+            </form>
           </div>
-        </main>
-      </div>
 
-      {/* Footer */}
-      <footer className="border-t border-[#1A1A1D] mt-auto px-6 py-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] text-[#555]">Resume Engine v1.0</p>
-          <p className="text-[10px] text-[#555]">Built with Claude API · Deployed on Railway</p>
+          <HistorySidebar history={history} activeId={activeHistoryId} onSelect={handleSelectHistory} onNewGeneration={handleNewGeneration} isOpen={sidebarOpen && history.length > 0} disabled={busy} />
         </div>
+
+        {loading && <LoadingState />}
+
+        {result && !loading && (
+          <section className="review-workspace" aria-labelledby="draft-title">
+            <div className="review-header">
+              <div className="review-title-row"><h2 id="draft-title" ref={reviewHeadingRef} tabIndex={-1}>Your application draft</h2></div>
+              {(result.job_title || result.company_name) && <p className="draft-context">{[result.job_title, result.company_name].filter(Boolean).join(' · ')}</p>}
+              <p className="review-notice">Check names, dates, employers, qualifications, and claims against your resume before exporting.</p>
+            </div>
+            <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+
+            {(activeTab === 'resume' || activeTab === 'cover_letter') && (
+              <div className="review-toolbar">
+                <div className="export-actions">
+                  <CopyButton text={activeTab === 'resume' ? result.resume : result.cover_letter} contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'} />
+                  <ExportButton content={activeTab === 'resume' ? result.resume : result.cover_letter} filename={buildFilename(result, activeTab === 'resume' ? 'Resume' : 'Cover Letter', 'md')} />
+                  <ExportDocxButton contentId={activeTab === 'resume' ? 'resume-content' : 'cover-letter-content'} filename={buildFilename(result, activeTab === 'resume' ? 'Resume' : 'Cover Letter', 'docx')} />
+                  <ExportPdfButton filename={buildFilename(result, activeTab === 'resume' ? 'Resume' : 'Cover Letter', 'pdf')} />
+                  <button type="button" onClick={() => setIsEditing(!isEditing)} className="button button-secondary button-small" aria-pressed={isEditing}>{isEditing ? 'Done editing' : 'Edit document'}</button>
+                </div>
+                <p className="export-hint">Document edits appear in Word and PDF exports. Markdown exports the original generated text.</p>
+              </div>
+            )}
+
+            <GapsPanel key={activeHistoryId || 'draft'} gaps={result.gaps} />
+
+            {activeTab === 'resume' && (
+              <div className="paper-tray">
+                <p className="pdf-filename">PDF filename: <span>{buildFilename(result, 'Resume', 'pdf')}</span></p>
+                <EditableDocument
+                  key={`${activeHistoryId}:resume`} contentId="resume-content" source={result.resume}
+                  components={RESUME_MARKDOWN_COMPONENTS} label="Resume document" isEditing={isEditing}
+                  savedHtml={documentSnapshots.current.get(activeHistoryId)?.resume}
+                  onSnapshot={(html) => saveDocumentSnapshot('resume', html)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'cover_letter' && (
+              <div className="paper-tray">
+                <p className="pdf-filename">PDF filename: <span>{buildFilename(result, 'Cover Letter', 'pdf')}</span></p>
+                <EditableDocument
+                  key={`${activeHistoryId}:cover_letter`} contentId="cover-letter-content" source={result.cover_letter}
+                  components={COVER_MARKDOWN_COMPONENTS} label="Cover letter document" isEditing={isEditing}
+                  savedHtml={documentSnapshots.current.get(activeHistoryId)?.cover_letter}
+                  onSnapshot={(html) => saveDocumentSnapshot('cover_letter', html)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'ats' && result.ats_score && (
+              <div className="review-content">
+                <p className="estimate-notice">AI estimate of resume fit. Actual screening systems and hiring decisions may differ.</p>
+                <div className="score-row"><ScoreRing score={result.ats_score.overall} label="Overall match" size={100} /><ScoreRing score={result.ats_score.keyword_coverage} label="Keyword coverage" size={100} /></div>
+                <div className="fit-columns">
+                  <section className="fit-card"><h3>Strongest match areas</h3><ul className="fit-list">{result.ats_score.strongest_areas?.map((area, index) => <li key={index}>{area}</li>)}</ul></section>
+                  <section className="fit-card"><h3>Gaps to address</h3><ul className="fit-list">{result.ats_score.gaps?.length > 0 ? result.ats_score.gaps.map((gap, index) => <li key={index}>{gap}</li>) : <li>No significant gaps detected</li>}</ul></section>
+                </div>
+                {result.six_second_test && <section className="recruiter-scan"><h3>6-second recruiter scan</h3><p>{result.six_second_test}</p></section>}
+              </div>
+            )}
+
+            {activeTab === 'before_after' && result.before_after && (
+              <div className="review-content comparisons"><p className="view-description">See how your original experience has been reframed for this role.</p>{result.before_after.map((item, index) => <BeforeAfterCard key={index} item={item} index={index} />)}</div>
+            )}
+
+            {activeTab === 'cold_messages' && (
+              <div className="review-content message-list">
+                <p className="view-description">LinkedIn messages tailored to this role. Replace [Name] with the recipient’s name before sending.</p>
+                <ColdMessageCard label="To a recruiter" message={result.cold_messages?.recruiter} subject={result.cold_messages?.subject_lines?.recruiter} />
+                <ColdMessageCard label="To a peer" message={result.cold_messages?.designer} subject={result.cold_messages?.subject_lines?.designer} />
+              </div>
+            )}
+
+            <AnalysisSummary analysis={result.analysis} />
+          </section>
+        )}
+
+      </main>
+
+      <footer className="site-footer">
+        <div className="footer-brand-row"><span>Resume Engine</span><span>Powered by Claude</span></div>
+        <PrivacyDisclosure />
       </footer>
     </div>
   );

@@ -3,3 +3,6 @@ node_modules/
 .env
 .env.local
 .vercel
+
+# Local original owner materials; never serve or commit
+.private/
